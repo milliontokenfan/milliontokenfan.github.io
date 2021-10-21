@@ -1,0 +1,345 @@
+<html>
+<head>
+    <title>Signing data</title>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+
+    <!-- CSS only -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-F3w7mX95PdgyTmZZMECAngseQB83DfGTowi0iMjiWaeVhAn4FJkqJByhZMI3AhiU" crossorigin="anonymous">
+
+
+    <!-- Boostrap stuff, has to come before JQuery is imported -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"
+        integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj"
+        crossorigin="anonymous"></script>
+
+
+    <!-- Bootstrap JavaScript Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/js/bootstrap.bundle.min.js" integrity="sha384-/bQdsTh/da6pkI1MST/rWKFNjaCP5gBSY4sEBT38Q/9RBh9AH40zEOg7Hlq2THRZ" crossorigin="anonymous"></script>
+
+
+    <script type="text/javascript" src="https://unpkg.com/web3@latest/dist/web3.min.js"></script>
+    <script type="text/javascript" src="https://unpkg.com/web3modal@1.9.4/dist/index.js"></script>
+    <script type="text/javascript" src="https://unpkg.com/@walletconnect/web3-provider@1.6.5/dist/umd/index.min.js"></script>
+    <script>
+
+    const obscureAddress = (address) => {
+      return address.substring(0, 6) + '...'
+           + address.substring(address.length - 4, address.length);
+    }
+
+    class WalletClass {
+
+      // Web3modal instance
+      web3Modal;
+
+      // Chosen wallet provider given by the dialog window
+      provider;
+
+      // Address of the selected account
+      selectedAccount;
+
+      // The button attaches a function to this variable
+      changeButton;
+
+      web3;
+
+      constructor () {
+        this.Web3Modal = window.Web3Modal.default;
+        this.WalletConnectProvider = window.WalletConnectProvider.default;
+
+        const providerOptions = {
+          walletconnect: {
+            package: this.WalletConnectProvider,
+            options: {
+              infuraId: "9aa3d95b3bc440fa88ea12eaa4456161",
+            }
+          }
+        };
+
+        this.web3Modal = new this.Web3Modal({
+          //network: "matic",
+          cacheProvider: true, // optional
+          providerOptions, // required
+          disableInjectedProvider: false, // optional. For MetaMask / Brave / Opera.
+        });
+
+        // check if web wallet is already connected.
+        if (window.ethereum) {
+
+          this.web3 = new Web3(window.ethereum);
+
+          this.web3.eth.getAccounts((accounta,accountb) => {
+            //if(accounta){onConnect();}
+            //else
+            if(accountb[0]){this.onConnect();} // <<-- this is what works for me on Firefox Metamask
+          });
+        }
+
+      }
+
+      connected = () => {
+        this.web3.eth.getAccounts().then((accounts) => {
+          console.log(accounts);
+          this.selectedAccount = accounts[0];
+          console.log(this.selectedAccount);
+          this.changeButton(obscureAddress(this.selectedAccount));
+        });
+      }
+
+      disconnected = () => {
+        this.changeButton('disconnected');
+      }
+
+
+      fetchAccountData = async () => {
+
+        // Get a Web3 instance for the wallet
+        this.web3 = new Web3(this.provider);
+
+        // Get connected chain id from Ethereum node
+        const chainId = await this.web3.eth.getChainId();
+
+        // Get list of accounts of the connected wallet
+        const accounts = await this.web3.eth.getAccounts();
+
+        console.log(accounts);
+        // MetaMask does not give you all accounts, only the selected account
+        this.selectedAccount = accounts[0];
+
+        if(!accounts[0]){await this.onDisconnect();return;} //if user disconnected wallet
+
+        this.connected();
+      }
+
+
+
+      updateButton = async () => {
+
+        if (this.selectedAccount) {
+          this.connected();
+        } else {
+          this.changeButton('disconnected');
+        }
+
+      }
+
+      onConnect = async () => {
+        try {
+          console.log('tries to connect');
+          this.provider = await this.web3Modal.connect();
+          console.log('finished trying');
+        } catch(e) {
+          console.log("Could not get a wallet connection", e);
+          return;
+        }
+
+        // Subscribe to accounts change
+        this.provider.on("accountsChanged", (accounts) => {
+          console.log('event: accountsChanged')
+          this.fetchAccountData();
+        });
+
+        // Subscribe to chainId change
+        this.provider.on("chainChanged", (chainId) => {
+          console.log('event: chainChanged')
+          this.fetchAccountData();
+        });
+
+        this.fetchAccountData();
+        //console.log(' this.updateButton();');
+        //await this.updateButton();
+
+      }
+
+
+      Disconnect = async () => {
+
+        if(this.provider.disconnect) {
+
+          await this.provider.disconnect();
+
+          await this.Disconnect();
+
+        } else {
+
+          alert ("The disconnection button is located in the wallet!");
+
+        }
+
+      }
+
+
+      onDisconnect = async () => {
+
+        // If the cached provider is not cleared,
+        // WalletConnect will default to the existing session
+        // and does not allow to re-scan the QR code with a new wallet.
+        // Depending on your use case you may want or want not his behavir.
+        await this.web3Modal.clearCachedProvider();
+
+        //provider = null; //if set to null, we get an error when reconnecting the wallet
+
+        this.selectedAccount = null;
+
+        this.changeButton('disconnected');
+
+      }
+
+
+    };
+
+
+
+    $('document').ready(function(){
+
+      Wallet = new WalletClass();
+
+      btn_connect_handleClick = () => {
+        if (!Wallet.selectedAccount){
+          Wallet.onConnect();
+        } else {
+          alert ("The disconnection button is located in the wallet!");
+        }
+      }
+
+      Wallet.changeButton = (data) => {
+        if(data == 'disconnected'){
+          $('#btn-connect').text('Connect Wallet')
+        } else {
+          $('#btn-connect').text(obscureAddress(data))
+        }
+      }
+
+      btn_sign_handleClick = () => {
+
+        console.log('SignMessage')
+
+        Wallet.onConnect().then( () => {
+
+          if(!Wallet.selectedAccount){
+            alert('Please connect your wallet to continue!');
+            return;
+          }
+          console.log(Wallet.selectedAccount)
+          let message = document.querySelector("#input-message").value
+          let walletAddress = Wallet.selectedAccount
+          let password = '' //not necessary, only used on javascript wallet
+
+          Wallet.web3.eth.personal.sign(
+                message,
+                walletAddress,
+                password,
+                function (err, signature) {
+
+                  if (err) {
+                    alert('Signature Denied');
+                    return;
+                  }
+
+                  if (signature) {
+                    $('#signature-output').val(signature);
+                    return;
+                  }
+                }
+            );
+          });
+
+        }
+
+        btn_verify = () => {
+          console.log('test');
+
+          let message = $('#message-toverify').val()
+          let signature = $('#signature-input').val()
+          let walletInputed = $('#wallet-input').val()
+
+          console.log(message);
+          console.log(signature);
+          console.log(walletInputed);
+
+          Wallet.web3.eth.personal.ecRecover(message, signature).then((address) => {
+            console.log('dddddddd'); //.toLowerCase();
+            console.log(address);
+            if(walletInputed.toLowerCase() == address.toLowerCase()) {
+              $('#verify-ok').show()
+              $('#verify-notok').hide()
+            } else {
+              $('#verify-notok').show()
+              $('#verify-ok').hide()
+            }
+            //verify-ok
+            //$('#doesmatch').text(address)
+          });
+
+
+
+
+        }
+
+      });
+
+    </script>
+
+</head>
+
+<body>
+  <div class="container" style="margin-top: 50px">
+    <h2>Sign Custom Message</h2>
+    <div class="row mb-3">
+      <div class="col-md-12 g-3">
+        <div class="row g-3 align-items-center">
+        <div class="col-auto"><button class="btn btn-primary" id="btn-clear" onclick="localStorage.clear()">Clear cache (local storage)</button></div>
+
+        <div class="col-auto"><button class="btn btn-primary" id="btn-connect" onclick="btn_connect_handleClick()">Connect Wallet</button></div>
+
+        <div class="col-auto "><button class="btn btn-primary" id="btn-sign" onclick="btn_sign_handleClick()">Sign Message</button></div>
+      </div>
+      </div>
+    </div>
+    <div class="row mb-3">
+
+      <textarea id="input-message" class="form-control" style="height: 204px" placeholder="Write a message you want to sign"></textarea>
+
+    </div>
+    <label for="signature-output" class="form-label">Message Signature</label>
+    <textarea class="form-control" type="text" name="signature-output" id="signature-output" readonly></textarea>
+
+
+    <h2 style="margin-top: 50px; margin-bottom: 20px">Verify Message Authenticity</h2>
+
+    <div class="row mb-3">
+      <textarea id="message-toverify" class="form-control" style="height: 204px" placeholder="Paste the message that needs verification"></textarea>
+    </div>
+    <div class="mb-3">
+      <label for="wallet-input" class="form-label">Author's Wallet Address</label>
+      <input class="form-control" type="text" name="wallet-input" id="wallet-input" maxlength="42" placeholder="Paste Author's Wallet Address">
+    </div>
+    <div class="mb-3">
+      <label for="signature-input" class="form-label">Message Signature</label>
+      <textarea class="form-control" type="text" name="signature-input" id="signature-input" placeholder="Paste Message Signature"></textarea>
+    </div>
+
+    <div class="row mb-3">
+      <div class="col-md-12 g-3">
+        <div class="row g-3 align-items-center">
+          <div class="col-auto">
+            <button class="btn btn-primary" id="btn-verify" onclick="btn_verify()">Verify!</button>
+          </div>
+          <div class="col-auto">
+            <div class="alert alert-success" role="alert" id="verify-ok" style="display:none">
+              Message and Signature are authentic for that address!
+            </div>
+            <div class="alert alert-danger" role="alert" id="verify-notok" style="display:none">
+              Data does not match with the signature!
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+</body>
+
+</html>

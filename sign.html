@@ -50,7 +50,7 @@
       web3;
 
       constructor () {
-        this.Web3Modal = window.Web3Modal.default;
+        this.Web3Modal = SafeAppWeb3Modal;
         this.WalletConnectProvider = window.WalletConnectProvider.default;
 
         const providerOptions = {

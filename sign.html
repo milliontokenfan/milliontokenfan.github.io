@@ -252,7 +252,7 @@
 
         }
 
-        btn_verify = () => {
+        window.btn_verify = () => {
           console.log('test');
 
           let message = $('#message-toverify').val()
@@ -263,19 +263,24 @@
           console.log(signature);
           console.log(walletInputed);
 
-          Wallet.web3.eth.personal.ecRecover(message, signature).then((address) => {
-            console.log('dddddddd'); //.toLowerCase();
-            console.log(address);
-            if(walletInputed.toLowerCase() == address.toLowerCase()) {
-              $('#verify-ok').show()
-              $('#verify-notok').hide()
-            } else {
-              $('#verify-notok').show()
-              $('#verify-ok').hide()
-            }
-            //verify-ok
-            //$('#doesmatch').text(address)
-          });
+          try {
+            Wallet.web3.eth.personal.ecRecover(message, signature).then((address) => {
+              console.log('dddddddd'); //.toLowerCase();
+              console.log(address);
+              if(walletInputed.toLowerCase() == address.toLowerCase()) {
+                $('#verify-ok').show()
+                $('#verify-notok').hide()
+              } else {
+                $('#verify-notok').show()
+                $('#verify-ok').hide()
+              }
+              //verify-ok
+              //$('#doesmatch').text(address)
+            });
+          } catch {
+            $('#verify-notok').show()
+            $('#verify-ok').hide()
+          }
 
 
 

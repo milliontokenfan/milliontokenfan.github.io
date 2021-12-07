@@ -23,7 +23,10 @@
     <script type="text/javascript" src="https://unpkg.com/web3@latest/dist/web3.min.js"></script>
     <script type="text/javascript" src="https://unpkg.com/web3modal@1.9.4/dist/index.js"></script>
     <script type="text/javascript" src="https://unpkg.com/@walletconnect/web3-provider@1.6.5/dist/umd/index.min.js"></script>
-    <script>
+    <script type="module">
+
+    import SafeAppsSDK from 'https://cdn.skypack.dev/@gnosis.pm/safe-apps-sdk';
+    import { SafeAppWeb3Modal } from 'https://cdn.skypack.dev/@gnosis.pm/safe-apps-web3modal';
 
     const obscureAddress = (address) => {
       return address.substring(0, 6) + '...'
@@ -42,7 +45,7 @@
       selectedAccount;
 
       // The button attaches a function to this variable
-      changeButton;
+      changeButton = () => {};
 
       web3;
 
@@ -195,9 +198,9 @@
 
     $('document').ready(function(){
 
-      Wallet = new WalletClass();
+      window.Wallet = new WalletClass();
 
-      btn_connect_handleClick = () => {
+      window.btn_connect_handleClick = () => {
         if (!Wallet.selectedAccount){
           Wallet.onConnect();
         } else {
@@ -213,7 +216,7 @@
         }
       }
 
-      btn_sign_handleClick = () => {
+      window.btn_sign_handleClick = () => {
 
         console.log('SignMessage')
 
